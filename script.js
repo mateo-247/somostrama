@@ -43,14 +43,54 @@ navigation.querySelectorAll('a').forEach((link) => {
   });
 });
 
-const observer = new IntersectionObserver((entries, currentObserver) => {
-  entries.forEach((entry) => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('visible');
-      currentObserver.unobserve(entry.target);
-    }
-  });
-}, { threshold: 0.12 });
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const revealElements = document.querySelectorAll('.reveal');
 
-document.querySelectorAll('.reveal').forEach((element) => observer.observe(element));
+if (reducedMotion.matches) {
+  revealElements.forEach((element) => element.classList.add('visible'));
+} else {
+  const observer = new IntersectionObserver((entries, currentObserver) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        currentObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12 });
+
+  revealElements.forEach((element) => observer.observe(element));
+}
+
+const teamGrid = document.querySelector('.team-grid');
+const teamCards = [...document.querySelectorAll('.team-card')];
+const teamDots = [...document.querySelectorAll('.team-dots button')];
+
+const setActiveTeamDot = (index) => {
+  teamDots.forEach((dot, dotIndex) => {
+    const isActive = dotIndex === index;
+    dot.classList.toggle('is-active', isActive);
+    dot.setAttribute('aria-current', String(isActive));
+  });
+};
+
+if (teamGrid && teamCards.length && teamDots.length) {
+  let scrollingFrame;
+  teamGrid.addEventListener('scroll', () => {
+    cancelAnimationFrame(scrollingFrame);
+    scrollingFrame = requestAnimationFrame(() => {
+      const currentIndex = teamCards.reduce((closestIndex, card, index) => (
+        Math.abs(card.offsetLeft - teamGrid.scrollLeft) < Math.abs(teamCards[closestIndex].offsetLeft - teamGrid.scrollLeft)
+          ? index
+          : closestIndex
+      ), 0);
+      setActiveTeamDot(currentIndex);
+    });
+  }, { passive: true });
+
+  teamDots.forEach((dot, index) => {
+    dot.addEventListener('click', () => {
+      teamGrid.scrollTo({ left: teamCards[index].offsetLeft, behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+    });
+  });
+}
 document.querySelector('#year').textContent = new Date().getFullYear();
